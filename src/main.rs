@@ -5,13 +5,15 @@ use winit::{
     dpi::PhysicalSize,
     event::{Event, WindowEvent},
     event_loop::{ControlFlow, EventLoop, EventLoopWindowTarget},
-    window::Window,
+    keyboard::{KeyCode, PhysicalKey},
+    window::{CursorGrabMode, Window},
 };
 
 struct State<'win> {
     surface: softbuffer::Surface<&'win Window, &'win Window>,
     _context: softbuffer::Context<&'win Window>,
     window: &'win Window,
+    grabbed: bool,
 }
 
 impl<'win> State<'win> {
@@ -25,6 +27,7 @@ impl<'win> State<'win> {
             surface,
             _context: context,
             window,
+            grabbed: false,
         };
 
         // initial resize needed for the surface to configure itself
@@ -40,6 +43,28 @@ impl<'win> State<'win> {
                 WindowEvent::RedrawRequested => self.draw()?,
                 WindowEvent::Resized(new_size) => self.resize(new_size)?,
                 WindowEvent::CloseRequested => elwt.exit(),
+                WindowEvent::KeyboardInput { event, .. } => {
+                    if matches!(event.physical_key, PhysicalKey::Code(KeyCode::KeyG)) {
+                        if event.state.is_pressed() {
+                            self.grabbed ^= true;
+                            let grab_mode = if self.grabbed {
+                                CursorGrabMode::Confined
+                            } else {
+                                CursorGrabMode::None
+                            };
+                            self.window.set_cursor_grab(grab_mode).unwrap();
+                        }
+                    }
+                }
+                _ => (),
+            },
+            Event::DeviceEvent {
+                device_id: _,
+                event,
+            } => match event {
+                winit::event::DeviceEvent::MouseMotion { delta } => {
+                    eprintln!("delta: {delta:?}");
+                }
                 _ => (),
             },
             _ => (),
